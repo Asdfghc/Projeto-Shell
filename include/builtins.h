@@ -1,7 +1,7 @@
-#ifndef BUILTINS_H_INCLUDED
-#define BUILTINS_H_INCLUDED
+#ifndef BUILTINS_H
+#define BUILTINS_H
 
+int is_builtin(const char* command);
+void builtins(Command command);
 
-
-
-#endif // BUILTINS_H_INCLUDED
+#endif // BUILTINS_H
