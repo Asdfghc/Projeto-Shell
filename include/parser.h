@@ -9,9 +9,9 @@
 
 typedef struct {
     char *argv[MAX_ARGS];
-    char *input_file;
+    //char *input_file;
     char *output_file;
-    int append;
+    int append;  // 0 = sobrescrever (>), 1 = anexar (>>)
 } Command;
 
 typedef struct {

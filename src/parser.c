@@ -45,10 +45,10 @@ ParsedLine parse(char *linha) {
             // 3. Parse do comando com redirecionamento
             token = strtok(pipe_cmds[j], " \t\n");
             while (token && argc < MAX_ARGS - 1) {
-                if (strcmp(token, "<") == 0) {
+                /* if (strcmp(token, "<") == 0) {
                     token = strtok(NULL, " \t\n");
                     cmd->input_file = token;
-                } else if (strcmp(token, ">") == 0) {
+                } else */ if (strcmp(token, ">") == 0) {
                     token = strtok(NULL, " \t\n");
                     cmd->output_file = token;
                     cmd->append = 0;

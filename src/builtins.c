@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <fcntl.h>
 #include "../include/parser.h"
 
 char* prepend(const char* s1, const char* s2) {
@@ -51,7 +52,14 @@ void builtins(Command command) {
         perror("fork");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {  // Filho
-        command.argv[0] = prepend(command.argv[0], "/bin/");
+        // Redireciona a saída padrão
+        if (command.output_file != NULL) {
+            int flags = O_WRONLY | O_CREAT | (command.append ? O_APPEND : O_TRUNC);
+            int fd_out = open(command.output_file, flags);
+            dup2(fd_out, STDOUT_FILENO);
+            close(fd_out);
+        }
+        command.argv[0] = prepend(command.argv[0], "/bin/");  // "/bin/<comando>"
         execvp(command.argv[0], command.argv);
         // FIXME: ERRO
         perror("execvp");
