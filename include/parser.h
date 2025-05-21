@@ -9,14 +9,14 @@
 
 typedef struct {
     char *argv[MAX_ARGS];
-    //char *input_file;
+    char *input_file;
     char *output_file;
     int append;  // 0 = sobrescrever (>), 1 = anexar (>>)
 } Command;
 
 typedef struct {
     Command pipeline[MAX_PIPE_CMDS];
-    int num_in_pipeline;
+    int num_pipeline;
 } ParallelCommand;
 
 typedef struct {

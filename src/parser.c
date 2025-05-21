@@ -10,6 +10,11 @@
 ParsedLine parse(char *linha) {
     ParsedLine parsed = {0};
 
+    // Check for NULL or empty input
+    if (linha == NULL || *linha == '\0' || strspn(linha, " \t\n") == strlen(linha)) {
+        return parsed;
+    }
+
     // 1. Separar por &
     char *parallel_cmds[MAX_PARALLEL];
     int n_parallel = 0;
@@ -35,7 +40,7 @@ ParsedLine parse(char *linha) {
             token = strtok(NULL, "|");
         }
 
-        pcmd->num_in_pipeline = n_pipes;
+        pcmd->num_pipeline = n_pipes;
 
         for (int j = 0; j < n_pipes; j++) {
             Command *cmd = &pcmd->pipeline[j];
@@ -45,10 +50,10 @@ ParsedLine parse(char *linha) {
             // 3. Parse do comando com redirecionamento
             token = strtok(pipe_cmds[j], " \t\n");
             while (token && argc < MAX_ARGS - 1) {
-                /* if (strcmp(token, "<") == 0) {
+                 if (strcmp(token, "<") == 0) {
                     token = strtok(NULL, " \t\n");
                     cmd->input_file = token;
-                } else */ if (strcmp(token, ">") == 0) {
+                } else if (strcmp(token, ">") == 0) {
                     token = strtok(NULL, " \t\n");
                     cmd->output_file = token;
                     cmd->append = 0;

@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include "../include/parser.h"
+#include "../include/utils.h"
 
 char* prepend(const char* s1, const char* s2) {
     size_t len1 = strlen(s1);
@@ -32,7 +33,7 @@ int is_builtin(const char* command) {
         // TODO: strcmp(command.argv[0], "path") == 0
 }
 
-void builtins(Command command) {
+pid_t builtins(Command command, int input_pipe_fd, int output_pipe_fd, int **pipefd, int num_pipes) {
     // O comando "cd" não cria um processo filho
     if (strcmp(command.argv[0], "cd") == 0) {
         if (command.argv[1] == NULL) {
@@ -43,7 +44,7 @@ void builtins(Command command) {
                 perror("cd");
             }
         }
-        return;
+        return -1; // FIXME: Deve dar errado
     }
 
     pid_t pid = fork();
@@ -52,21 +53,20 @@ void builtins(Command command) {
         perror("fork");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {  // Filho
-        // Redireciona a saída padrão
-        if (command.output_file != NULL) {
-            int flags = O_WRONLY | O_CREAT | (command.append ? O_APPEND : O_TRUNC);
-            int fd_out = open(command.output_file, flags);
-            dup2(fd_out, STDOUT_FILENO);
-            close(fd_out);
+        for (int i = 0; i < num_pipes; i++) {
+            if (pipefd[i][0] != input_pipe_fd) close(pipefd[i][0]);
+            if (pipefd[i][1] != output_pipe_fd) close(pipefd[i][1]);
         }
+
+        // Redireciona apropriadamente a entrada e saída padrão
+        redirect_io(command, input_pipe_fd, output_pipe_fd);
+
         command.argv[0] = prepend(command.argv[0], "/bin/");  // "/bin/<comando>"
         execvp(command.argv[0], command.argv);
         // FIXME: ERRO
         perror("execvp");
         exit(EXIT_FAILURE);
     } else {  // Pai
-        // FIXME: STATUS
-        int status;
-        waitpid(pid, &status, 0);
+        return pid;
     }
 }
