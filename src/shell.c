@@ -15,7 +15,7 @@ pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, in
     if (is_builtin(command.argv[0])) {
         return builtins(command, input_pipe_fd, output_pipe_fd, pipefd, num_pipes);
         // Comando externo
-    } else if (strncmp(command.argv[0], "./", 2) == 0) {
+    } else {
         // Executa o comando como um executável local
         pid_t pid = fork();
         if (pid == -1) {
@@ -36,15 +36,8 @@ pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, in
             perror("execvp");
             exit(EXIT_FAILURE);
         } else {  // Pai
-            /* for (int i = 0; i < num_pipes; i++) {
-                if (pipefd[i][0] != input_pipe_fd && pipefd[i][0] != -1) printf("Fechando leitura do pipe %d: %d\n", i, pipefd[i][0]);
-                if (pipefd[i][1] != output_pipe_fd && pipefd[i][1] != -1) printf("Fechando escrita do pipe %d: %d\n", i, pipefd[i][1]);
-            } */
             return pid;
         }
-    // Comando não existe
-    } else {
-        printf("Comando não reconhecido: %s\n", command.argv[0]);  //FIXME: ERRO
     }
 }
 
@@ -73,8 +66,7 @@ int main() {
             continue;  // Linha vazia ou inválida
         }
 
-        Command command = parsed.commands[0].pipeline[0];  // TODO: Apenas o primeiro comando
-
+        Command command = parsed.commands[0].pipeline[0];  // TODO: Apenas o primeiro comando?
         if (strcmp(command.argv[0], "exit") == 0) {
             free(input);
             exit(0);
@@ -163,8 +155,10 @@ int main() {
                 int status;
                 waitpid(pids[i][j], &status, 0);
             }
+            free(pids[i]);
         }
         free(pids);
+        free(pipeline_sizes);
         free(input);
     }
 }

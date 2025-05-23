@@ -29,8 +29,9 @@ int is_builtin(const char* command) {
     return strcmp(command, "pwd") == 0 ||
         strcmp(command, "cd") == 0 ||
         strcmp(command, "ls") == 0 ||
-        strcmp(command, "cat") == 0;
-        // TODO: strcmp(command.argv[0], "path") == 0
+        strcmp(command, "cat") == 0 ||
+        strcmp(command, "path") == 0 ||
+        strcmp(command, "echo") == 0;
 }
 
 pid_t builtins(Command command, int input_pipe_fd, int output_pipe_fd, int **pipefd, int num_pipes) {
@@ -45,28 +46,41 @@ pid_t builtins(Command command, int input_pipe_fd, int output_pipe_fd, int **pip
             }
         }
         return -1; // FIXME: Deve dar errado
-    }
+    } else if (strcmp(command.argv[0], "path") == 0) {
+        if (command.argv[1] == NULL) {
+            fprintf(stderr, "path: caminho não fornecido\n");  // FIXME: ERRO
+        } else {
+            const char *old_path = getenv("PATH");
+            if (old_path == NULL) old_path = "";
 
-    pid_t pid = fork();
-    if (pid == -1) {
-        // FIXME: ERRO
-        perror("fork");
-        exit(EXIT_FAILURE);
-    } else if (pid == 0) {  // Filho
-        for (int i = 0; i < num_pipes; i++) {
-            if (pipefd[i][0] != input_pipe_fd) close(pipefd[i][0]);
-            if (pipefd[i][1] != output_pipe_fd) close(pipefd[i][1]);
+            char *new_path = malloc(strlen(old_path) + strlen(command.argv[1]) + 2);
+
+            setenv("PATH", new_path, 1);  // 1 = sobrescreve
+            free(new_path);
         }
+        return -1;  // Indica que nada foi executado com fork
+    } else {
+        pid_t pid = fork();
+        if (pid == -1) {
+            // FIXME: ERRO
+            perror("fork");
+            exit(EXIT_FAILURE);
+        } else if (pid == 0) {  // Filho
+            for (int i = 0; i < num_pipes; i++) {
+                if (pipefd[i][0] != input_pipe_fd) close(pipefd[i][0]);
+                if (pipefd[i][1] != output_pipe_fd) close(pipefd[i][1]);
+            }
 
-        // Redireciona apropriadamente a entrada e saída padrão
-        redirect_io(command, input_pipe_fd, output_pipe_fd);
+            // Redireciona apropriadamente a entrada e saída padrão
+            redirect_io(command, input_pipe_fd, output_pipe_fd);
 
-        command.argv[0] = prepend(command.argv[0], "/bin/");  // "/bin/<comando>"
-        execvp(command.argv[0], command.argv);
-        // FIXME: ERRO
-        perror("execvp");
-        exit(EXIT_FAILURE);
-    } else {  // Pai
-        return pid;
+            command.argv[0] = prepend(command.argv[0], "/bin/");  // "/bin/<comando>"
+            execvp(command.argv[0], command.argv);
+            // FIXME: ERRO
+            perror("execvp");
+            exit(EXIT_FAILURE);
+        } else {  // Pai
+            return pid;
+        }
     }
 }
