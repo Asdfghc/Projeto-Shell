@@ -1,28 +1,30 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <errno.h>
+#include <unistd.h>
+
 #include "../include/parser.h"
 
 ParsedLine parse(char *linha) {
     ParsedLine parsed = {0};
 
-    // Check for NULL or empty input
-    if (linha == NULL || *linha == '\0' || strspn(linha, " \t\n") == strlen(linha)) {
+    if (linha == NULL || *linha == '\0' ||
+        strspn(linha, " \t\n") == strlen(linha)) {
         return parsed;
     }
 
     // 1. Separar por &
     char *parallel_cmds[MAX_PARALLEL];
     int n_parallel = 0;
-    char *token = strtok(linha, "&");
-    while (token && n_parallel < MAX_PARALLEL) {
-        while (*token == ' ') token++; // tira espaços à esquerda
-        parallel_cmds[n_parallel++] = token;
-        token = strtok(NULL, "&");
+    char *saveptr1;
+    char *token1 = strtok_r(linha, "&", &saveptr1);
+    while (token1 && n_parallel < MAX_PARALLEL) {
+        while (*token1 == ' ') token1++;  // tira espaços à esquerda
+        parallel_cmds[n_parallel++] = token1;
+        token1 = strtok_r(NULL, "&", &saveptr1);
     }
 
     parsed.num_commands = n_parallel;
@@ -33,11 +35,12 @@ ParsedLine parse(char *linha) {
         // 2. Separar por |
         char *pipe_cmds[MAX_PIPE_CMDS];
         int n_pipes = 0;
-        token = strtok(parallel_cmds[i], "|");
-        while (token && n_pipes < MAX_PIPE_CMDS) {
-            while (*token == ' ') token++;
-            pipe_cmds[n_pipes++] = token;
-            token = strtok(NULL, "|");
+        char *saveptr2;
+        char *token2 = strtok_r(parallel_cmds[i], "|", &saveptr2);
+        while (token2 && n_pipes < MAX_PIPE_CMDS) {
+            while (*token2 == ' ') token2++;
+            pipe_cmds[n_pipes++] = token2;
+            token2 = strtok_r(NULL, "|", &saveptr2);
         }
 
         pcmd->num_pipeline = n_pipes;
@@ -48,27 +51,28 @@ ParsedLine parse(char *linha) {
             int argc = 0;
 
             // 3. Parse do comando com redirecionamento
-            token = strtok(pipe_cmds[j], " \t\n");
-            while (token && argc < MAX_ARGS - 1) {
-                 if (strcmp(token, "<") == 0) {
-                    token = strtok(NULL, " \t\n");
-                    cmd->input_file = token;
-                } else if (strcmp(token, ">") == 0) {
-                    token = strtok(NULL, " \t\n");
-                    cmd->output_file = token;
+            char *saveptr3;
+            char *token3 = strtok_r(pipe_cmds[j], " \t\n", &saveptr3);
+            while (token3 && argc < MAX_ARGS - 1) {
+                if (strcmp(token3, "<") == 0) {
+                    token3 = strtok_r(NULL, " \t\n", &saveptr3);
+                    cmd->input_file = token3;
+                } else if (strcmp(token3, ">") == 0) {
+                    token3 = strtok_r(NULL, " \t\n", &saveptr3);
+                    cmd->output_file = token3;
                     cmd->append = 0;
-                } else if (strcmp(token, ">>") == 0) {
-                    token = strtok(NULL, " \t\n");
-                    cmd->output_file = token;
+                } else if (strcmp(token3, ">>") == 0) {
+                    token3 = strtok_r(NULL, " \t\n", &saveptr3);
+                    cmd->output_file = token3;
                     cmd->append = 1;
                 } else {
-                    argv[argc++] = token;
+                    argv[argc++] = token3;
                 }
-                token = strtok(NULL, " \t\n");
+                token3 = strtok_r(NULL, " \t\n", &saveptr3);
             }
+
             argv[argc] = NULL;
 
-            // Copiar argv para a struct
             for (int k = 0; k < argc; k++) {
                 cmd->argv[k] = argv[k];
             }

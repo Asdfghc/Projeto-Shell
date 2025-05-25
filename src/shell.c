@@ -6,16 +6,62 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+
 #include "../include/parser.h"
-#include "../include/builtins.h"
 #include "../include/utils.h"
 
 pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, int **pipefd, int num_pipes, int cmd_index) {
-    // Comando interno
-    if (is_builtin(command.argv[0])) {
-        return builtins(command, input_pipe_fd, output_pipe_fd, pipefd, num_pipes);
-        // Comando externo
-    } else {
+    if (is_builtin(command.argv[0])) {  // Comando interno
+        if (strcmp(command.argv[0], "cd") == 0) {  // Caso separado pois não cria um processo filho
+            if (command.argv[1] == NULL) {
+                fprintf(stderr, "cd: caminho não fornecido\n");  // FIXME: ERRO
+            } else {
+                if (chdir(command.argv[1]) != 0) {
+                    // FIXME: ERRO
+                    perror("cd");
+                }
+            }
+            return -1;
+        } else if (strcmp(command.argv[0], "path") == 0) {  // Caso separado pois não cria um processo filho
+            if (command.argv[1] == NULL) {
+                fprintf(stderr, "path: caminho não fornecido\n");  // FIXME: ERRO
+            } else {
+                const char *old_path = getenv("PATH");
+                if (old_path == NULL) old_path = "";
+
+                char *new_path = malloc(strlen(old_path) + strlen(command.argv[1]) + 2);
+                sprintf(new_path, "%s:%s", old_path, command.argv[1]);
+                setenv("PATH", new_path, 1);  // 1 = sobrescreve
+                free(new_path);
+            }
+            return -1;
+        } else {
+            pid_t pid = fork();
+            if (pid == -1) {
+                // FIXME: ERRO
+                perror("fork");
+                exit(EXIT_FAILURE);
+            } else if (pid == 0) {  // Filho
+                // Fecha os pipes que não são necessários
+                for (int i = 0; i < num_pipes; i++) {
+                    if (pipefd[i][0] != input_pipe_fd) close(pipefd[i][0]);
+                    if (pipefd[i][1] != output_pipe_fd) close(pipefd[i][1]);
+                }
+
+                // Redireciona apropriadamente a entrada e saída padrão
+                redirect_io(command, input_pipe_fd, output_pipe_fd);
+
+                command.argv[0] = prepend(command.argv[0], "/bin/");  // "/bin/<comando>"
+                execvp(command.argv[0], command.argv);
+                
+                // FIXME: ERRO
+                perror("execvp");
+                exit(EXIT_FAILURE);
+            } else {  // Pai
+                return pid;
+            }
+        }        
+    } else {  // Comando externo
         // Executa o comando como um executável local
         pid_t pid = fork();
         if (pid == -1) {
@@ -23,16 +69,17 @@ pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, in
             perror("fork");
             exit(EXIT_FAILURE);
         } else if (pid == 0) {  // Filho
+            // Fecha os pipes que não são necessários
             for (int i = 0; i < num_pipes; i++) {
                 if (pipefd[i][0] != input_pipe_fd && pipefd[i][0] != -1) close(pipefd[i][0]);
                 if (pipefd[i][1] != output_pipe_fd && pipefd[i][1] != -1) close(pipefd[i][1]);
-            } // TODO: Por index por causa de pipe reutilizado??
+            }
             
             // Redireciona apropriadamente a entrada e saída padrão
             redirect_io(command, input_pipe_fd, output_pipe_fd);
 
             execvp(command.argv[0], command.argv);
-            // FIXME: ERRO
+            // FIXME: ERRO  // TODO: Falar se comando não existe
             perror("execvp");
             exit(EXIT_FAILURE);
         } else {  // Pai
@@ -42,13 +89,13 @@ pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, in
 }
 
 int main() {
-
     //HelloWorld("printf");
 
     while (1) {
         char *input = NULL;
         size_t len = 0;
         
+        // Leitura da linha de comando
         printf("> ");
         if (getline(&input, &len, stdin) == -1) {
             perror("getline");
@@ -56,14 +103,13 @@ int main() {
             exit(EXIT_FAILURE);
             //FIXME: ERRO
         }
-        
         input[strcspn(input, "\n")] = 0;  // Remove o newline
         
         ParsedLine parsed = parse(input);
 
-        if (parsed.num_commands == 0) {
+        if (parsed.num_commands == 0) {  // Linha vazia ou inválida
             free(input);
-            continue;  // Linha vazia ou inválida
+            continue;
         }
 
         Command command = parsed.commands[0].pipeline[0];  // TODO: Apenas o primeiro comando?
@@ -86,6 +132,7 @@ int main() {
                 free(input);
                 exit(EXIT_FAILURE);
             }
+            // Cria os pipes
             for (int i = 0; i < num_pipeline - 1; i++) {
                 pipefd[i] = (int *)malloc(2 * sizeof(int));
                 if (pipefd[i] == NULL) {  // FIXME: ERRO
@@ -104,7 +151,7 @@ int main() {
                 }
             }
 
-            /* // Print para depuração
+            /* // Prints para depuração
             printf("Pipes:\n");
             for (int j = 0; j < num_pipeline - 1; j++) {
                 if (pipefd[j] != NULL) {
@@ -123,7 +170,7 @@ int main() {
                 printf("Output file: %s\n", pcmd.pipeline[i].output_file ? pcmd.pipeline[i].output_file : "NULL");
             } */
 
-
+            // Executa os comandos em paralelo
             for (int j = 0; j < num_pipeline; j++) {
                 printf("Executando comando %s\n", pcmd.pipeline[j].argv[0]);
                 //printf("Input pipe fd: %d\n", (j == 0) ? -1 : pipefd[j - 1][0]);
@@ -133,23 +180,20 @@ int main() {
                     (j == num_pipeline - 1) ? -1 : pipefd[j][1],
                     pipefd, num_pipeline - 1, j);
             }
-
-
+            // Fecha todos os pipes no pai
             for (int i = 0; i < num_pipeline - 1; i++) {
                 close(pipefd[i][0]);
                 close(pipefd[i][1]);
                 free(pipefd[i]);
             }
             free(pipefd);
-
-            
         }
+
         // Espera todos os filhos
         for (int i = 0; i < parsed.num_commands; i++) {
             for (int j = 0; j < pipeline_sizes[i]; j++) {
-                //printf("Esperando pid %d\n", pids[i][j]);
-                if (pids[i][j] == -1) {
-                    continue;  // Comando não criou um filho (cd)
+                if (pids[i][j] == -1) {  // Comando não criou um filho (cd e path)
+                    continue;
                 }
                 // FIXME: STATUS
                 int status;
