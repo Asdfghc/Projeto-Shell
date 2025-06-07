@@ -1,3 +1,4 @@
+// Arquivo principal para rodar o shell
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -9,7 +10,14 @@
 
 #include "../include/parser.h"
 #include "../include/utils.h"
-
+/** Executa um uníco comando, tratando comandos externos, pipes e redirecionamentos
+ *  command é o comando a ser executado
+ *  input_pipe_fd é o descritor de pipe de entrada.
+ *  output_pipe_fd é o dxescritor de pipe de saída.
+ *  pipefd é array de todos os pipes do pipeline
+ *  num_pipes é número de pipes no pipeline
+ *  retorna o PID do processo filho criado, ou -1 caso não crie um processo (para comandos como: cd, path)
+ */ 
 pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, int **pipefd, int num_pipes, int cmd_index) {
     if (is_builtin(command.argv[0])) {  // Comando interno
         if (strcmp(command.argv[0], "cd") == 0) {  // Caso separado pois não cria um processo filho
@@ -79,7 +87,8 @@ pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, in
             redirect_io(command, input_pipe_fd, output_pipe_fd);
 
             execvp(command.argv[0], command.argv);
-            // FIXME: ERRO  // TODO: Falar se comando não existe
+            // FIXME: ERRO  
+            // TODO: Falar se comando não existe
             perror("execvp");
             exit(EXIT_FAILURE);
         } else {  // Pai
@@ -88,9 +97,10 @@ pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, in
     }
 }
 
+/** Função principal do Shell, tem um laço que lê e executa os comandos
+ *  Retorna 0 caso de sucesso
+ */
 int main() {
-    //HelloWorld("printf");
-
     while (1) {
         char *input = NULL;
         size_t len = 0;

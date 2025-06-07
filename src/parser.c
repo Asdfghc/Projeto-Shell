@@ -1,3 +1,4 @@
+//Implementação do parser
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,15 +9,22 @@
 
 #include "../include/parser.h"
 
+
+/**Analisa uma string de linha de comando e a converte em uma estrutura ParsedLine
+ * Como parâmetro é passado a string do comando inserido pelo usuário
+ * Retorna uma estrutura ParsedLine com os comandos
+*/
 ParsedLine parse(char *linha) {
     ParsedLine parsed = {0};
 
+    //Se a linha estiver vazia, retorna uma estrutura vazia
     if (linha == NULL || *linha == '\0' ||
         strspn(linha, " \t\n") == strlen(linha)) {
         return parsed;
     }
 
-    // 1. Separar por &
+
+    // 1. Separar comandos paralelos
     char *parallel_cmds[MAX_PARALLEL];
     int n_parallel = 0;
     char *saveptr1;
@@ -32,7 +40,7 @@ ParsedLine parse(char *linha) {
     for (int i = 0; i < n_parallel; i++) {
         ParallelCommand *pcmd = &parsed.commands[i];
 
-        // 2. Separar por |
+        // 2. Separar comandos de pipeline
         char *pipe_cmds[MAX_PIPE_CMDS];
         int n_pipes = 0;
         char *saveptr2;
@@ -50,7 +58,7 @@ ParsedLine parse(char *linha) {
             char *argv[MAX_ARGS] = {0};
             int argc = 0;
 
-            // 3. Parse do comando com redirecionamento
+            // 3. Analisar o comando, seus argumentos e redirecionamento
             char *saveptr3;
             char *token3 = strtok_r(pipe_cmds[j], " \t\n", &saveptr3);
             while (token3 && argc < MAX_ARGS - 1) {
