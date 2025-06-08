@@ -87,9 +87,12 @@ pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, in
             redirect_io(command, input_pipe_fd, output_pipe_fd);
 
             execvp(command.argv[0], command.argv);
-            // FIXME: ERRO  
-            // TODO: Falar se comando não existe
-            perror("execvp");
+            // FIXME: ERRO
+            if (errno == ENOENT) {
+                fprintf(stderr, "Comando '%s' não encontrado\n", command.argv[0]);
+            } else {
+                perror("execvp");
+            }
             exit(EXIT_FAILURE);
         } else {  // Pai
             return pid;
