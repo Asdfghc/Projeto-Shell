@@ -47,8 +47,19 @@ ParsedLine parse(char *linha) {
         char *token2 = strtok_r(parallel_cmds[i], "|", &saveptr2);
         while (token2 && n_pipes < MAX_PIPE_CMDS) {
             while (*token2 == ' ') token2++;
+            if (*token2 == '\0') { // ERRO
+                fprintf(stderr, "Erro de sintaxe: pipe '|' malformado\n");
+                ParsedLine erro = {0};
+                return erro;
+            }
             pipe_cmds[n_pipes++] = token2;
             token2 = strtok_r(NULL, "|", &saveptr2);
+        }
+
+        if (n_pipes == 0) { // ERRO
+            fprintf(stderr, "Erro: nenhum comando válido após pipe\n");
+            ParsedLine erro = {0};
+            return erro;
         }
 
         pcmd->num_pipeline = n_pipes;

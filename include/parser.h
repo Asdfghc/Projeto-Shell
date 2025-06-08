@@ -2,8 +2,6 @@
  * Define as estruturas de dados para representar uma linha de comando
  * analisada (parsed) e declara a função do parser.
  */
-//会いおお会う押青子愛雄あほ多々ペク
-//亜でゃいあういあ牛会う育あう育あ
 #ifndef PARSER_H
 #define PARSER_H
 #define MAX_ARGS 16
@@ -34,6 +32,5 @@ typedef struct {
 } ParsedLine;
 
 ParsedLine parse(char *linha);
-// ういあういあう
 
 #endif // PARSER_H

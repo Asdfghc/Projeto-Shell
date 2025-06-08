@@ -19,37 +19,36 @@
  *  retorna o PID do processo filho criado, ou -1 caso não crie um processo (para comandos como: cd, path)
  */ 
 pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, int **pipefd, int num_pipes, int cmd_index) {
-    if (is_builtin(command.argv[0])) {  // Comando interno
-        if (strcmp(command.argv[0], "cd") == 0) {  // Caso separado pois não cria um processo filho
+    if (is_builtin(command.argv[0])) { // Comando interno
+        if (strcmp(command.argv[0], "cd") == 0) { // Caso separado pois não cria um processo filho
             if (command.argv[1] == NULL) {
-                fprintf(stderr, "cd: caminho não fornecido\n");  // FIXME: ERRO
+                fprintf(stderr, "cd: caminho não fornecido\n"); // ERRO
             } else {
-                if (chdir(command.argv[1]) != 0) {
-                    // FIXME: ERRO
+                if (chdir(command.argv[1]) != 0) { // ERRO
                     perror("cd");
                 }
             }
             return -1;
-        } else if (strcmp(command.argv[0], "path") == 0) {  // Caso separado pois não cria um processo filho
+        } else if (strcmp(command.argv[0], "path") == 0) { // Caso separado pois não cria um processo filho
             if (command.argv[1] == NULL) {
-                fprintf(stderr, "path: caminho não fornecido\n");  // FIXME: ERRO
+                // printf("path: %s\n", getenv("PATH") ); // Print do PATH atual para depuração
+                fprintf(stderr, "path: caminho não fornecido\n"); // ERRO
             } else {
                 const char *old_path = getenv("PATH");
                 if (old_path == NULL) old_path = "";
 
                 char *new_path = malloc(strlen(old_path) + strlen(command.argv[1]) + 2);
                 sprintf(new_path, "%s:%s", old_path, command.argv[1]);
-                setenv("PATH", new_path, 1);  // 1 = sobrescreve
+                setenv("PATH", new_path, 1); // 1 = sobrescreve
                 free(new_path);
             }
             return -1;
         } else {
             pid_t pid = fork();
-            if (pid == -1) {
-                // FIXME: ERRO
+            if (pid == -1) { // ERRO
                 perror("fork");
                 exit(EXIT_FAILURE);
-            } else if (pid == 0) {  // Filho
+            } else if (pid == 0) { // Filho
                 // Fecha os pipes que não são necessários
                 for (int i = 0; i < num_pipes; i++) {
                     if (pipefd[i][0] != input_pipe_fd) close(pipefd[i][0]);
@@ -59,24 +58,23 @@ pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, in
                 // Redireciona apropriadamente a entrada e saída padrão
                 redirect_io(command, input_pipe_fd, output_pipe_fd);
 
-                command.argv[0] = prepend(command.argv[0], "/bin/");  // "/bin/<comando>"
+                command.argv[0] = prepend(command.argv[0], "/bin/"); // "/bin/<comando>"
                 execvp(command.argv[0], command.argv);
                 
-                // FIXME: ERRO
+                // ERRO
                 perror("execvp");
                 exit(EXIT_FAILURE);
-            } else {  // Pai
+            } else { // Pai
                 return pid;
             }
         }        
-    } else {  // Comando externo
+    } else { // Comando externo
         // Executa o comando como um executável local
         pid_t pid = fork();
-        if (pid == -1) {
-            // FIXME: ERRO
+        if (pid == -1) { // ERRO
             perror("fork");
             exit(EXIT_FAILURE);
-        } else if (pid == 0) {  // Filho
+        } else if (pid == 0) { // Filho
             // Fecha os pipes que não são necessários
             for (int i = 0; i < num_pipes; i++) {
                 if (pipefd[i][0] != input_pipe_fd && pipefd[i][0] != -1) close(pipefd[i][0]);
@@ -87,14 +85,15 @@ pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, in
             redirect_io(command, input_pipe_fd, output_pipe_fd);
 
             execvp(command.argv[0], command.argv);
-            // FIXME: ERRO
+            
+            // ERRO
             if (errno == ENOENT) {
                 fprintf(stderr, "Comando '%s' não encontrado\n", command.argv[0]);
             } else {
                 perror("execvp");
             }
             exit(EXIT_FAILURE);
-        } else {  // Pai
+        } else { // Pai
             return pid;
         }
     }
@@ -104,35 +103,47 @@ pid_t execute_command(Command command, int input_pipe_fd, int output_pipe_fd, in
  *  Retorna 0 caso de sucesso
  */
 int main() {
+    setenv("PATH", "", 1);
     while (1) {
         char *input = NULL;
         size_t len = 0;
         
         // Leitura da linha de comando
         printf("> ");
-        if (getline(&input, &len, stdin) == -1) {
+        if (getline(&input, &len, stdin) == -1) { // ERRO
             perror("getline");
             free(input);
             exit(EXIT_FAILURE);
-            //FIXME: ERRO
         }
-        input[strcspn(input, "\n")] = 0;  // Remove o newline
+        input[strcspn(input, "\n")] = 0; // Remove o newline
         
         ParsedLine parsed = parse(input);
 
-        if (parsed.num_commands == 0) {  // Linha vazia ou inválida
+        if (parsed.num_commands == 0) { // Linha vazia ou inválida
             free(input);
             continue;
         }
 
-        Command command = parsed.commands[0].pipeline[0];  // TODO: Apenas o primeiro comando?
+        Command command = parsed.commands[0].pipeline[0];
         if (strcmp(command.argv[0], "exit") == 0) {
             free(input);
             exit(0);
         }
         
-        pid_t **pids = (pid_t **)malloc(parsed.num_commands * sizeof(pid_t *));  // FIXME: ERRO
-        int *pipeline_sizes = malloc(parsed.num_commands * sizeof(int)); // FIXME: ERRO
+        pid_t **pids = malloc(parsed.num_commands * sizeof(pid_t *));
+        if (pids == NULL) { // ERRO
+            perror("malloc");
+            free(input);
+            exit(EXIT_FAILURE);
+        }
+
+        int *pipeline_sizes = malloc(parsed.num_commands * sizeof(int));
+        if (pipeline_sizes == NULL) { // ERRO
+            perror("malloc");
+            free(pids);
+            free(input);
+            exit(EXIT_FAILURE);
+        }
 
         for (int i = 0; i < parsed.num_commands; i++) {
             ParallelCommand pcmd = parsed.commands[i];
@@ -140,7 +151,7 @@ int main() {
             pipeline_sizes[i] = num_pipeline;
             pids[i] = malloc(num_pipeline * sizeof(pid_t));
             int **pipefd = (int **)malloc((num_pipeline - 1) * sizeof(int *));
-            if (pipefd == NULL) {  // FIXME: ERRO
+            if (pipefd == NULL) { // ERRO
                 perror("malloc");
                 free(input);
                 exit(EXIT_FAILURE);
@@ -148,14 +159,14 @@ int main() {
             // Cria os pipes
             for (int i = 0; i < num_pipeline - 1; i++) {
                 pipefd[i] = (int *)malloc(2 * sizeof(int));
-                if (pipefd[i] == NULL) {  // FIXME: ERRO
+                if (pipefd[i] == NULL) { // ERRO
                     perror("malloc");
                     for (int j = 0; j < i; j++) free(pipefd[j]);
                     free(pipefd);
                     free(input);
                     exit(EXIT_FAILURE);
                 }
-                if (pipe(pipefd[i]) == -1) {  // FIXME: ERRO
+                if (pipe(pipefd[i]) == -1) { // ERRO
                     perror("pipe");
                     for (int j = 0; j <= i; j++) free(pipefd[j]);
                     free(pipefd);
@@ -185,7 +196,7 @@ int main() {
 
             // Executa os comandos em paralelo
             for (int j = 0; j < num_pipeline; j++) {
-                printf("Executando comando %s\n", pcmd.pipeline[j].argv[0]);
+                printf("Executando comando \"%s\"...\n", pcmd.pipeline[j].argv[0]);
                 //printf("Input pipe fd: %d\n", (j == 0) ? -1 : pipefd[j - 1][0]);
                 //printf("Output pipe fd: %d\n", (j == num_pipeline - 1) ? -1 : pipefd[j][1]);
                 pids[i][j] = execute_command(pcmd.pipeline[j],
@@ -205,10 +216,9 @@ int main() {
         // Espera todos os filhos
         for (int i = 0; i < parsed.num_commands; i++) {
             for (int j = 0; j < pipeline_sizes[i]; j++) {
-                if (pids[i][j] == -1) {  // Comando não criou um filho (cd e path)
+                if (pids[i][j] == -1) { // Comando não criou um filho (cd e path)
                     continue;
                 }
-                // FIXME: STATUS
                 int status;
                 waitpid(pids[i][j], &status, 0);
             }
