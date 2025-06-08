@@ -34,6 +34,7 @@ Error* pass_error(char* msg, Error* prev) WARN_UNUSED_RESULT NONNULL(1, 2);
 Error* free_error(Error* err) WARN_UNUSED_RESULT;
 void print_error(Error* err, bool verbose) NONNULL(1);
 Error* feed_error(Error* err, bool verbose) WARN_UNUSED_RESULT NONNULL(1);
+void exit_with_error(Error* err, bool verbose) NONNULL(1);
 char* format_error_msg(char* prefix) NONNULL(1);
 
 #define create_error(code, msg) create_error_impl((code), (msg), __FILE__, __LINE__)

@@ -8,19 +8,24 @@
 #include <unistd.h>
 
 #include "../include/parser.h"
+#include "../include/errors.h"
 
 
 /**Analisa uma string de linha de comando e a converte em uma estrutura ParsedLine
  * Como parâmetro é passado a string do comando inserido pelo usuário
  * Retorna uma estrutura ParsedLine com os comandos
 */
-ParsedLine parse(char *linha) {
+ReturnWithError parse(char *linha) {
+    Error* err;
     ParsedLine parsed = {0};
 
     //Se a linha estiver vazia, retorna uma estrutura vazia
     if (linha == NULL || *linha == '\0' ||
         strspn(linha, " \t\n") == strlen(linha)) {
-        return parsed;
+        return (ReturnWithError){
+            &parsed,
+            NULL
+        };
     }
 
 
@@ -29,7 +34,16 @@ ParsedLine parse(char *linha) {
     int n_parallel = 0;
     char *saveptr1;
     char *token1 = strtok_r(linha, "&", &saveptr1);
-    while (token1 && n_parallel < MAX_PARALLEL) {
+    while (token1) {
+        if(n_parallel >= MAX_PARALLEL) {
+            err = create_error(1, "Número máximo de comandos paralelos excedido!");
+            
+            return (ReturnWithError){
+                NULL,
+                err
+            };
+        }
+
         while (*token1 == ' ') token1++;  // tira espaços à esquerda
         parallel_cmds[n_parallel++] = token1;
         token1 = strtok_r(NULL, "&", &saveptr1);
@@ -45,7 +59,16 @@ ParsedLine parse(char *linha) {
         int n_pipes = 0;
         char *saveptr2;
         char *token2 = strtok_r(parallel_cmds[i], "|", &saveptr2);
-        while (token2 && n_pipes < MAX_PIPE_CMDS) {
+        while (token2) {
+            if(n_pipes >= MAX_PIPE_CMDS) {
+                err = create_error(1, "Número máximo de comandos em pipeline excedido!");
+            
+                return (ReturnWithError){
+                    NULL,
+                    err
+                };
+            }
+
             while (*token2 == ' ') token2++;
             pipe_cmds[n_pipes++] = token2;
             token2 = strtok_r(NULL, "|", &saveptr2);
@@ -61,16 +84,58 @@ ParsedLine parse(char *linha) {
             // 3. Analisar o comando, seus argumentos e redirecionamento
             char *saveptr3;
             char *token3 = strtok_r(pipe_cmds[j], " \t\n", &saveptr3);
-            while (token3 && argc < MAX_ARGS - 1) {
+            if(!token3) {
+                err = create_error(1, "Comando inválido!");
+            
+                return (ReturnWithError){
+                    NULL,
+                    err
+                };
+            }
+
+            while (token3) {
+                if(argc >= MAX_ARGS - 1) {
+                    err = create_error(1, "Número máximo de argumentos excedido!");
+                
+                    return (ReturnWithError){
+                        NULL,
+                        err
+                    };
+                }
+
                 if (strcmp(token3, "<") == 0) {
                     token3 = strtok_r(NULL, " \t\n", &saveptr3);
+                    if(!token3) {
+                        err = create_error(1, "Necessário enviar um caminho de redirecionamento após '<'!");
+                
+                        return (ReturnWithError){
+                            NULL,
+                            err
+                        };
+                    }
                     cmd->input_file = token3;
                 } else if (strcmp(token3, ">") == 0) {
                     token3 = strtok_r(NULL, " \t\n", &saveptr3);
+                    if(!token3) {
+                        err = create_error(1, "Necessário enviar um caminho de redirecionamento após '>'!");
+                
+                        return (ReturnWithError){
+                            NULL,
+                            err
+                        };
+                    }
                     cmd->output_file = token3;
                     cmd->append = 0;
                 } else if (strcmp(token3, ">>") == 0) {
                     token3 = strtok_r(NULL, " \t\n", &saveptr3);
+                    if(!token3) {
+                        err = create_error(1, "Necessário enviar um caminho de redirecionamento após '>>'!");
+                
+                        return (ReturnWithError){
+                            NULL,
+                            err
+                        };
+                    }
                     cmd->output_file = token3;
                     cmd->append = 1;
                 } else {
@@ -88,5 +153,8 @@ ParsedLine parse(char *linha) {
         }
     }
 
-    return parsed;
+    return (ReturnWithError){
+        &parsed,
+        NULL
+    };
 }

@@ -16,9 +16,22 @@
 */
 ReturnWithError prepend(const char* s1, const char* s2) {
     Error* err;
-    size_t len1 = strlen(s1);
-    size_t len2 = strlen(s2);
-    char* result = malloc(len1 + len2 + 1); 
+    size_t len1;
+    size_t len2;
+    char* result;
+
+    if(!s1 || !s2) {
+        err = create_error(1, "String inválida!");
+        
+        return (ReturnWithError){
+            NULL,
+            err
+        };
+    }
+
+    len1 = strlen(s1);
+    len2 = strlen(s2);
+    result = malloc(len1 + len2 + 1);
 
     if (result == NULL) {
         err = create_error(1, "Falha ao alocar memória");
@@ -58,19 +71,30 @@ int is_builtin(const char* command) {
  * output_pipe_fd é o descritor de arquivo para ler a saída de um pipe
  */
 Error* redirect_io(Command command, int input_pipe_fd, int output_pipe_fd) {
+    char* msg;
+    Error* err;
     // Redirecionamento de entrada
     if (input_pipe_fd != -1) {  // Pipe de entrada
         if (dup2(input_pipe_fd, STDIN_FILENO) == -1) {
-            return create_error(1, format_error_msg("Falha ao duplicar descritor de arquivo"));
+            msg = format_error_msg("Falha ao duplicar descritor de arquivo");
+            err = create_error(1, msg);
+            free(msg);
+            return err;
         }
         close(input_pipe_fd);
-    } else if (command.input_file != NULL) {  // Arquivo de entrada
+    } else if (command.input_file != NULL && strlen(command.input_file) > 0) {  // Arquivo de entrada
         int fd_in = open(command.input_file, O_RDONLY, 0644);
         if (fd_in == -1) {
-            return create_error(1, format_error_msg("Falha ao abrir arquivo"));
+            msg = format_error_msg("Falha ao abrir arquivo");
+            err = create_error(1, msg);
+            free(msg);
+            return err;
         }
         if (dup2(fd_in, STDIN_FILENO) == -1) {
-            return create_error(1, format_error_msg("Falha ao duplicar descritor de arquivo"));
+            msg = format_error_msg("Falha ao duplicar descritor de arquivo");
+            err = create_error(1, msg);
+            free(msg);
+            return err;
         }
         close(fd_in);
     }
@@ -78,17 +102,26 @@ Error* redirect_io(Command command, int input_pipe_fd, int output_pipe_fd) {
     // Redirecionamento de saída
     if (output_pipe_fd != -1) {  // Pipe de saída
         if (dup2(output_pipe_fd, STDOUT_FILENO) == -1) {
-            return create_error(1, format_error_msg("Falha ao duplicar descritor de arquivo"));
+            msg = format_error_msg("Falha ao duplicar descritor de arquivo");
+            err = create_error(1, msg);
+            free(msg);
+            return err;
         }
         close(output_pipe_fd);
-    } else if (command.output_file != NULL) {
+    } else if (command.output_file != NULL && strlen(command.output_file) > 0) {
         int flags = O_WRONLY | O_CREAT | (command.append ? O_APPEND : O_TRUNC);
         int fd_out = open(command.output_file, flags, 0644);
         if (fd_out == -1) {
-            return create_error(1, format_error_msg("Falha ao abrir arquivo"));
+            msg = format_error_msg("Falha ao abrir arquivo");
+            err = create_error(1, msg);
+            free(msg);
+            return err;
         }
         if (dup2(fd_out, STDOUT_FILENO) == -1) {
-            return create_error(1, format_error_msg("Falha ao duplicar descritor de arquivo"));
+            msg = format_error_msg("Falha ao duplicar descritor de arquivo");
+            err = create_error(1, msg);
+            free(msg);
+            return err;
         }
         close(fd_out);
     }

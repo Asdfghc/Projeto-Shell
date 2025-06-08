@@ -10,6 +10,8 @@
 #define MAX_PIPE_CMDS 8
 #define MAX_PARALLEL 8
 
+#include "errors.h"
+
 
 //Representa um único comando a ser executado.
 typedef struct {
@@ -33,7 +35,7 @@ typedef struct {
     int num_commands;                           // Número de comandos/pipelines paralelos
 } ParsedLine;
 
-ParsedLine parse(char *linha);
+ReturnWithError parse(char *linha);
 // ういあういあう
 
 #endif // PARSER_H
