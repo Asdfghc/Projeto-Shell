@@ -36,22 +36,22 @@ Error* create_error_impl(int code, char *msg, const char* file, int line) {
     err->next = NULL;
 
     if(code == 0) {
-        err->code = -1;
+        err->code = ERR_INTERNAL_ERROR_CREATION;
         err->msg = strdup("Um erro aconteceu, mas a identificação foi perdida!");
         err->file = strdup("-");
         err->line = -1;
     } else if(msg == NULL || msg[0] == '\0') {
-        err->code = -1;
+        err->code = ERR_INTERNAL_ERROR_CREATION;
         err->msg = strdup("Um erro aconteceu, mas a informação foi perdida!");
         err->file = strdup("-");
-        err->line = -1;
+        err->line = ERR_INTERNAL_ERROR_CREATION;
     } else if(file == NULL || file[0] == '\0') {
-        err->code = -1;
+        err->code = ERR_INTERNAL_ERROR_CREATION;
         err->msg = strdup("Um erro aconteceu, mas a referência ao arquivo foi perdida!");
         err->file = strdup("-");
         err->line = -1;
     } else if(line < 0) {
-        err->code = -1;
+        err->code = ERR_INTERNAL_ERROR_CREATION;
         err->msg = strdup("Um erro aconteceu, mas a referência à linha de código foi perdida!");
         err->file = strdup("-");
         err->line = -1;
@@ -85,19 +85,19 @@ Error* free_error(Error* err) {
 
 Error* pass_error_impl(char* msg, Error* prev, const char* file, int line) {
     if(!prev) {
-        return create_error(-2, "Um erro ocorreu, houve ocorreu um problema ao passá-lo!");
+        return create_error(ERR_INTERNAL_ERROR_PASSING, "Um erro ocorreu, houve ocorreu um problema ao passá-lo!");
     }
 
     if(msg == NULL || msg[0] == '\0') {
-        return create_error(-2, "Um erro ocorreu, houve ocorreu um problema ao passar sua informação!");
+        return create_error(ERR_INTERNAL_ERROR_PASSING, "Um erro ocorreu, houve ocorreu um problema ao passar sua informação!");
     }
 
     if(file == NULL || file[0] == '\0') {
-        return create_error(-2, "Um erro ocorreu, houve ocorreu um problema ao passar informação sobre seu arquivo!");
+        return create_error(ERR_INTERNAL_ERROR_PASSING, "Um erro ocorreu, houve ocorreu um problema ao passar informação sobre seu arquivo!");
     }
 
     if(line < 0) {
-        return create_error(-2, "Um erro ocorreu, houve ocorreu um problema ao passar informação sobre sua linha de código!");
+        return create_error(ERR_INTERNAL_ERROR_PASSING, "Um erro ocorreu, houve ocorreu um problema ao passar informação sobre sua linha de código!");
     }
 
     while(prev->next) {
@@ -156,6 +156,9 @@ void print_error(Error* err, bool verbose) {
 }
 
 Error* feed_error(Error* err, bool verbose) {
+    if(err->code > 100) {
+        exit_with_error(err, true);
+    }
     print_error(err, verbose);
     return free_error(err);
 }

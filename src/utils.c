@@ -21,7 +21,7 @@ ReturnWithError prepend(const char* s1, const char* s2) {
     char* result;
 
     if(!s1 || !s2) {
-        err = create_error(1, "String inválida!");
+        err = create_error(ERR_INVALID_STRING, "String inválida!");
         
         return (ReturnWithError){
             NULL,
@@ -34,7 +34,7 @@ ReturnWithError prepend(const char* s1, const char* s2) {
     result = malloc(len1 + len2 + 1);
 
     if (result == NULL) {
-        err = create_error(1, "Falha ao alocar memória");
+        err = create_error(ERR_ALLOC_FAIL, "Falha ao alocar memória");
         
         return (ReturnWithError){
             NULL,
@@ -77,7 +77,7 @@ Error* redirect_io(Command command, int input_pipe_fd, int output_pipe_fd) {
     if (input_pipe_fd != -1) {  // Pipe de entrada
         if (dup2(input_pipe_fd, STDIN_FILENO) == -1) {
             msg = format_error_msg("Falha ao duplicar descritor de arquivo");
-            err = create_error(1, msg);
+            err = create_error(ERR_IO_REDIRECTION_FAIL, msg);
             free(msg);
             return err;
         }
@@ -86,13 +86,13 @@ Error* redirect_io(Command command, int input_pipe_fd, int output_pipe_fd) {
         int fd_in = open(command.input_file, O_RDONLY, 0644);
         if (fd_in == -1) {
             msg = format_error_msg("Falha ao abrir arquivo");
-            err = create_error(1, msg);
+            err = create_error(ERR_FILE_OPEN_FAIL, msg);
             free(msg);
             return err;
         }
         if (dup2(fd_in, STDIN_FILENO) == -1) {
             msg = format_error_msg("Falha ao duplicar descritor de arquivo");
-            err = create_error(1, msg);
+            err = create_error(ERR_IO_REDIRECTION_FAIL, msg);
             free(msg);
             return err;
         }
@@ -103,7 +103,7 @@ Error* redirect_io(Command command, int input_pipe_fd, int output_pipe_fd) {
     if (output_pipe_fd != -1) {  // Pipe de saída
         if (dup2(output_pipe_fd, STDOUT_FILENO) == -1) {
             msg = format_error_msg("Falha ao duplicar descritor de arquivo");
-            err = create_error(1, msg);
+            err = create_error(ERR_IO_REDIRECTION_FAIL, msg);
             free(msg);
             return err;
         }
@@ -113,13 +113,13 @@ Error* redirect_io(Command command, int input_pipe_fd, int output_pipe_fd) {
         int fd_out = open(command.output_file, flags, 0644);
         if (fd_out == -1) {
             msg = format_error_msg("Falha ao abrir arquivo");
-            err = create_error(1, msg);
+            err = create_error(ERR_FILE_OPEN_FAIL, msg);
             free(msg);
             return err;
         }
         if (dup2(fd_out, STDOUT_FILENO) == -1) {
             msg = format_error_msg("Falha ao duplicar descritor de arquivo");
-            err = create_error(1, msg);
+            err = create_error(ERR_IO_REDIRECTION_FAIL, msg);
             free(msg);
             return err;
         }

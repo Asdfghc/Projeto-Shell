@@ -36,7 +36,7 @@ ReturnWithError parse(char *linha) {
     char *token1 = strtok_r(linha, "&", &saveptr1);
     while (token1) {
         if(n_parallel >= MAX_PARALLEL) {
-            err = create_error(1, "Número máximo de comandos paralelos excedido!");
+            err = create_error(ERR_TOO_MANY_PARALLEL_COMMANDS, "Número máximo de comandos paralelos excedido!");
             
             return (ReturnWithError){
                 NULL,
@@ -61,7 +61,7 @@ ReturnWithError parse(char *linha) {
         char *token2 = strtok_r(parallel_cmds[i], "|", &saveptr2);
         while (token2) {
             if(n_pipes >= MAX_PIPE_CMDS) {
-                err = create_error(1, "Número máximo de comandos em pipeline excedido!");
+                err = create_error(ERR_TOO_MANY_PIPE_COMMANDS, "Número máximo de comandos em pipeline excedido!");
             
                 return (ReturnWithError){
                     NULL,
@@ -85,7 +85,7 @@ ReturnWithError parse(char *linha) {
             char *saveptr3;
             char *token3 = strtok_r(pipe_cmds[j], " \t\n", &saveptr3);
             if(!token3) {
-                err = create_error(1, "Comando inválido!");
+                err = create_error(ERR_INVALID_COMMAND, "Comando inválido!");
             
                 return (ReturnWithError){
                     NULL,
@@ -95,7 +95,7 @@ ReturnWithError parse(char *linha) {
 
             while (token3) {
                 if(argc >= MAX_ARGS - 1) {
-                    err = create_error(1, "Número máximo de argumentos excedido!");
+                    err = create_error(ERR_TOO_MANY_ARGUMENTS, "Número máximo de argumentos excedido!");
                 
                     return (ReturnWithError){
                         NULL,
@@ -106,7 +106,7 @@ ReturnWithError parse(char *linha) {
                 if (strcmp(token3, "<") == 0) {
                     token3 = strtok_r(NULL, " \t\n", &saveptr3);
                     if(!token3) {
-                        err = create_error(1, "Necessário enviar um caminho de redirecionamento após '<'!");
+                        err = create_error(ERR_MISSING_PATH_ARG, "Necessário enviar um caminho de redirecionamento após '<'!");
                 
                         return (ReturnWithError){
                             NULL,
@@ -117,7 +117,7 @@ ReturnWithError parse(char *linha) {
                 } else if (strcmp(token3, ">") == 0) {
                     token3 = strtok_r(NULL, " \t\n", &saveptr3);
                     if(!token3) {
-                        err = create_error(1, "Necessário enviar um caminho de redirecionamento após '>'!");
+                        err = create_error(ERR_MISSING_PATH_ARG, "Necessário enviar um caminho de redirecionamento após '>'!");
                 
                         return (ReturnWithError){
                             NULL,
@@ -129,7 +129,7 @@ ReturnWithError parse(char *linha) {
                 } else if (strcmp(token3, ">>") == 0) {
                     token3 = strtok_r(NULL, " \t\n", &saveptr3);
                     if(!token3) {
-                        err = create_error(1, "Necessário enviar um caminho de redirecionamento após '>>'!");
+                        err = create_error(ERR_MISSING_PATH_ARG, "Necessário enviar um caminho de redirecionamento após '>>'!");
                 
                         return (ReturnWithError){
                             NULL,

@@ -9,6 +9,27 @@
     #define NONNULL
 #endif
 
+#define ERR_INTERNAL_ERROR_CREATION -1 // falha na criação do erro
+#define ERR_INTERNAL_ERROR_PASSING -2 // falha na passagem do erro
+
+#define ERR_MISSING_PATH_ARG 1 // ausência do argumento de path
+#define ERR_INVALID_PATH 2 // path inválido
+#define ERR_INVALID_COMMAND 3 // comando inválido
+#define ERR_COMMAND_NOT_FOUND 4 // comando não encontrado
+#define ERR_INVALID_STRING 11 // string inválida
+#define ERR_FILE_OPEN_FAIL 21 // erro ao abrir arquivo
+#define ERR_TOO_MANY_PARALLEL_COMMANDS 31 // excesso de comandos em paralelo
+#define ERR_TOO_MANY_PIPE_COMMANDS 32 // excesso de comandos em pipeline
+#define ERR_TOO_MANY_ARGUMENTS 33 // excesso de argumentos
+
+#define ERR_ALLOC_FAIL 101 // falha ao alocar memória
+#define ERR_FORK_FAIL 102 // falha ao criar novo processo
+#define ERR_WAITPID_FAIL 103 // falha ao encerrar processo filho
+#define ERR_IO_REDIRECTION_FAIL 104 // falha ao redirecionar I/O ou duplicar descritor
+#define ERR_EOF_DETECTED 110 // falha na leitura do comando, End Of File recebido
+#define ERR_READ_COMMAND_FAIL 111 // outras falhas na leitura do comando
+
+
 #include <stdbool.h>
 
 struct Error {

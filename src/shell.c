@@ -26,14 +26,14 @@ ReturnWithError execute_command(Command command, int input_pipe_fd, int output_p
     if (is_builtin(command.argv[0])) {  // Comando interno
         if (strcmp(command.argv[0], "cd") == 0) {  // Caso separado pois não cria um processo filho
             if (command.argv[1] == NULL) {
-                err = create_error(1, "É necessário fornecer um caminho!");
+                err = create_error(ERR_MISSING_PATH_ARG, "É necessário fornecer um caminho!");
                 return (ReturnWithError) {
                     NULL,
                     err
                 };
             } else {
                 if (chdir(command.argv[1]) != 0) {
-                    err = create_error(1, "O caminho fornecido não existe!");
+                    err = create_error(ERR_INVALID_PATH, "O caminho fornecido não existe!");
                     return (ReturnWithError) {
                         NULL,
                         err
@@ -46,7 +46,7 @@ ReturnWithError execute_command(Command command, int input_pipe_fd, int output_p
             };
         } else if (strcmp(command.argv[0], "path") == 0) {  // Caso separado pois não cria um processo filho
             if (command.argv[1] == NULL) {
-                err = create_error(1, "É necessário fornecer um caminho!");
+                err = create_error(ERR_MISSING_PATH_ARG, "É necessário fornecer um caminho!");
                 return (ReturnWithError) {
                     NULL,
                     err
@@ -58,7 +58,7 @@ ReturnWithError execute_command(Command command, int input_pipe_fd, int output_p
                 char *new_path = malloc(strlen(old_path) + strlen(command.argv[1]) + 2);
                 if(new_path == NULL) {
                     msg = format_error_msg("Falha ao alocar memória");
-                    err = create_error(1, msg);
+                    err = create_error(ERR_ALLOC_FAIL, msg);
                     free(msg);
 
                     return (ReturnWithError) {
@@ -78,7 +78,7 @@ ReturnWithError execute_command(Command command, int input_pipe_fd, int output_p
         } else {
             pid_t pid = fork();
             if (pid == -1) {
-                err = create_error(1, "Falha ao criar novo processo");
+                err = create_error(ERR_FORK_FAIL, "Falha ao criar novo processo");
                 return (ReturnWithError) {
                     NULL,
                     err
@@ -116,7 +116,7 @@ ReturnWithError execute_command(Command command, int input_pipe_fd, int output_p
         // Executa o comando como um executável local
         pid_t pid = fork();
         if (pid == -1) {
-            err = create_error(1, "Falha ao criar novo processo");
+            err = create_error(ERR_FORK_FAIL, "Falha ao criar novo processo");
             return (ReturnWithError) {
                 NULL,
                 err
@@ -136,7 +136,7 @@ ReturnWithError execute_command(Command command, int input_pipe_fd, int output_p
             }
 
             execvp(command.argv[0], command.argv);
-            err = create_error(1, "O comando não foi encontrado!");
+            err = create_error(ERR_COMMAND_NOT_FOUND, "O comando não foi encontrado!");
             exit_with_error(err, true);
         } else {  // Pai
             return (ReturnWithError) {
@@ -163,11 +163,11 @@ int main() {
         printf("> ");
         if (getline(&input, &len, stdin) == -1) {
             if(feof(stdin)) {
-                err = create_error(1, "Entrada inválida (EOF detectado)");
+                err = create_error(ERR_EOF_DETECTED, "Entrada inválida (EOF detectado)");
                 err = feed_error(err, verbose_flag);
             } else {
                 msg = format_error_msg("Falha ao ler o comando");
-                err = create_error(1, msg);
+                err = create_error(ERR_READ_COMMAND_FAIL, msg);
                 free(msg);
                 err = feed_error(err, verbose_flag);
             }
@@ -197,7 +197,7 @@ int main() {
         pid_t **pids = (pid_t **)malloc(parsed.num_commands * sizeof(pid_t *));
         if(pids == NULL) {
             msg = format_error_msg("Falha ao alocar memória");
-            err = create_error(1, msg);
+            err = create_error(ERR_ALLOC_FAIL, msg);
             free(msg);
             err = feed_error(err, verbose_flag);
         }
@@ -205,7 +205,7 @@ int main() {
         int *pipeline_sizes = malloc(parsed.num_commands * sizeof(int));
         if(pipeline_sizes == NULL) {
             msg = format_error_msg("Falha ao alocar memória");
-            err = create_error(1, msg);
+            err = create_error(ERR_ALLOC_FAIL, msg);
             free(msg);
             err = feed_error(err, verbose_flag);
         }
@@ -217,14 +217,14 @@ int main() {
             pids[i] = malloc(num_pipeline * sizeof(pid_t));
             if (pids[i] == NULL) {
                 msg = format_error_msg("Falha ao alocar memória");
-                err = create_error(1, msg);
+                err = create_error(ERR_ALLOC_FAIL, msg);
                 free(msg);
                 err = feed_error(err, verbose_flag);
             }
             int **pipefd = (int **)malloc((num_pipeline - 1) * sizeof(int *));
             if (pipefd == NULL) {
                 msg = format_error_msg("Falha ao alocar memória");
-                err = create_error(1, msg);
+                err = create_error(ERR_ALLOC_FAIL, msg);
                 free(msg);
                 err = feed_error(err, verbose_flag);
             }
@@ -233,23 +233,21 @@ int main() {
                 pipefd[i] = (int *)malloc(2 * sizeof(int));
                 if (pipefd[i] == NULL) {
                     msg = format_error_msg("Falha ao alocar memória");
-                    err = create_error(1, msg);
+                    err = create_error(ERR_ALLOC_FAIL, msg);
                     free(msg);
-                    err = feed_error(err, verbose_flag);
                     for (int j = 0; j < i; j++) free(pipefd[j]);
                     free(pipefd);
                     free(input);
-                    exit(EXIT_FAILURE);
+                    err = feed_error(err, verbose_flag);
                 }
                 if (pipe(pipefd[i]) == -1) {
                     msg = format_error_msg("Falha ao alocar memória");
-                    err = create_error(1, msg);
+                    err = create_error(ERR_ALLOC_FAIL, msg);
                     free(msg);
-                    err = feed_error(err, verbose_flag);
                     for (int j = 0; j <= i; j++) free(pipefd[j]);
                     free(pipefd);
                     free(input);
-                    exit(EXIT_FAILURE);
+                    err = feed_error(err, verbose_flag);
                 }
             }
 
@@ -280,7 +278,7 @@ int main() {
                 
             Command current_cmd = pcmd.pipeline[j];
             for (int k = 1; current_cmd.argv[k] != NULL; k++) {
-                if (strcmp(current_cmd.argv[k], "-v") == 0) {
+                if (strcmp(current_cmd.argv[k], "-verr") == 0) {
                     verbose_flag = true;
                     for (int t = k; current_cmd.argv[t] != NULL; t++) {
                         current_cmd.argv[t] = current_cmd.argv[t + 1];
@@ -295,11 +293,10 @@ int main() {
                     pipefd, num_pipeline - 1, j);
 
                 if(ret.err) {
-                    err = feed_error(ret.err, verbose_flag);
                     free(pids);
                     free(pipeline_sizes);
                     free(input);
-                    exit(EXIT_FAILURE);
+                    err = feed_error(ret.err, verbose_flag);
                 }
 
                 pids[i][j] = (pid_t)(intptr_t)ret.data;
@@ -323,7 +320,7 @@ int main() {
 
                 int status;
                 if(waitpid(pids[i][j], &status, 0) == -1) {
-                    err = create_error(1, "Falha ao encerrar processo!");
+                    err = create_error(ERR_WAITPID_FAIL, "Falha ao encerrar processo!");
                     err = feed_error(err, verbose_flag);
                 }
             }
